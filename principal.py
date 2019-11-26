@@ -1,83 +1,133 @@
+from openpyxl import load_workbook
 import networkx as nx
 import matplotlib.pyplot as plt
+import time
+import pandas as pd
+import random
+start_time = time.time()
 
-class VertexData(object):
-    def __init__(self, vertexDataId, subject, schoolClass, teacher):
-        self.vertexDataId, self.subject, self.schoolClass, self.teacher = vertexDataId, subject, schoolClass, teacher
-        self.adjacents, self.schedule_id, self.saturation = [], None, -1
+class Vertice(object):
+    def __init__(self, idVertice, materia, turma, professor):
+        self.idVertice = idVertice
+        self.materia = materia
+        self.turma = turma
+        self.professor = professor
+        self.adjacents = []
+        self.idTarefa = -1
+        self.saturacao = 0
 
-file = open("./public/files/dados_teste.txt")
 
-vertex = []
-vertexListId = []
-G = nx.Graph()
 
-n = 0
-for line in file:
-    dados = line.split("|")
-    numberClasses = int(dados[3].strip())
-    for i in range(numberClasses):
-        vertexListId.append(n)
-        vertexData = VertexData(n, dados[0].strip(), dados[1].strip(), dados[2].strip())
-        G.add_node(n)
-        vertex.append(vertexData)
-        n += 1
+class Escola(object):
+    def __init__(self):
+        self.professores = {}
+        self.materias = {}
+        self.turmas = {}
+        self.horariosResult = []
+        self.cores = 0
+        self.tarefas = []
+        self.G = nx.Graph()
+        self.lerDadosEscolaArquivo()
+        # print(self.professores)
+        self.criarAdjacencias()
+        self.colorir()
+        self.printar()
 
-file.close()
+        
+        # print(df.tail(3))
 
-for v1 in vertex:
-    for v2 in vertex:
-        if(v1.vertexDataId != v2.vertexDataId and (v1.subject == v2.subject or v1.teacher == v2.teacher)):
-            v1.adjacents.append(v2)
-            v2.adjacents.append(v1)
-            G.add_edge(v1.vertexDataId, v2.vertexDataId)
+    
 
-file = open("./public/files/horarios_teste.txt")
 
-days_week = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-hours = []
-schedules = []
+    def lerDadosEscolaArquivo(self):
+        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
+        df = pd.read_excel(fileXLSX, 'Dados')
+        listaArquivo = df.to_numpy()
+        verticeId = 0
+        for linha in listaArquivo:
+            for i in range(int(linha[3])):
+                vertice = Vertice(verticeId, linha[0], linha[1], linha[2])
+                self.G.add_node(verticeId)
+                self.horariosResult.append('gray')
+                self.professores[verticeId] = vertice
+                verticeId += 1
 
-for line in file:
-    hours.append(line.strip())
+    def criarAdjacencias(self):
+        for v1 in self.professores.values():
+            for v2 in self.professores.values():
+                if(v1.idVertice != v2.idVertice and (v1.materia == v2.materia or v1.professor == v2.professor)):
+                    v1.adjacents.append(v2)
+                    v2.adjacents.append(v1)
+                    self.G.add_edge(v1.idVertice, v2.idVertice)
+                    self.G[v1.idVertice][v2.idVertice]['color']='red'
 
-for day in days_week:
-    for hour in hours:
-        schedules.append("{} - {}".format(day, hour))
 
-file.close()
+    def printar(self):
+        print("Nodes of graph: ")
+        print(self.G.nodes())
+        print("Edges of graph: ")
+        print(self.G.edges())
+        
 
-notColoring = []
-while(len(vertexListId) > 0):
-    maxVertex = vertex[vertexListId[0]]
-    for index in vertexListId:
-        if(vertex[index].saturation > maxVertex.saturation or (vertex[index].saturation == maxVertex.saturation
-            and len(vertex[index].adjacents) > len(maxVertex.adjacents))):
-            maxVertex = vertex[index]
+        for v1 in self.professores.values():
+            # print(v)
+            if(v1.idTarefa != None) :
+                print("Horário: ", self.tarefas[v1.idTarefa], "|| Matéria: ", v1.materia, " || Professor: ", v1.professor, " || Turma: ", v1.turma)
+                # print("Matéria: ", v1.materia)
+                # print("Professor: ", v1.professor)
+                # print("Turma: ", v1.turma)
 
-    color = 0
-    colorValidate = False
-    while(color < len(schedules) and not colorValidate):
-        colorValidate = True
-        for adjacent in maxVertex.adjacents:
-            if(adjacent.schedule_id == color):
-                colorValidate = False
-                color += 1
 
-    if(color < len(schedules)):
-        for adjacent in maxVertex.adjacents:
-            adjacent.saturation += 1
-        maxVertex.schedule_id = color
-    else:
-        notColoring.append(maxVertex.vertexDataId)
+        nx.draw(self.G, node_color = self.horariosResult, with_labels = True)
+        plt.savefig("simple_path.png") # save as png
+        plt.show() # display
 
-    vertexListId.remove(maxVertex.vertexDataId)
 
-print(notColoring)
+    def colorir(self):
+        days_week = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+        hours = []
 
-for v in vertex:
-    if(v.schedule_id != None) :
-        print("Horário: ", schedules[v.schedule_id])
-        print("Matéria: ", v.subject)
-        print("Professor: ", v.teacher)
-        print("Turma: ", v.schoolClass)
+        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
+        df = pd.read_excel(fileXLSX, 'Configuracoes')
+        listaArquivo = df.to_numpy()        
+
+
+        for line in listaArquivo:
+            hours.append(line[0])
+
+        for day in days_week:
+            for hour in hours:
+                self.tarefas.append("{} - {}".format(day, hour))
+
+        notColoring = []
+       
+        verticeMaiorSaturacao = self.professores[1]
+        for v1 in self.professores.values():
+            if(v1.saturacao > verticeMaiorSaturacao.saturacao or (v1.saturacao == verticeMaiorSaturacao.saturacao
+                and len(v1.adjacents) > len(verticeMaiorSaturacao.adjacents))):
+                verticeMaiorSaturacao = v1
+
+
+            colorValidate = False
+            while(self.cores < len(self.tarefas) and not colorValidate):
+                colorValidate = True
+                for adjacent in verticeMaiorSaturacao.adjacents:
+                    if(adjacent.idTarefa == self.cores ):
+                        colorValidate = False
+                        self.cores  += 1
+
+            if(self.cores < len(self.tarefas)):
+                for adjacent in verticeMaiorSaturacao.adjacents:
+                    adjacent.saturacao += 1
+                verticeMaiorSaturacao.idTarefa = self.cores 
+            else:
+                notColoring.append(verticeMaiorSaturacao.idVertice)
+
+        
+
+
+E = Escola()
+
+
+
+print("--- %s seconds ---" % (time.time() - start_time))
