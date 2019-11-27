@@ -6,7 +6,7 @@ class VertexData(object):
         self.vertexDataId, self.subject, self.schoolClass, self.teacher = vertexDataId, subject, schoolClass, teacher
         self.adjacents, self.schedule_id, self.saturation = [], None, -1
 
-file = open("./public/files/dados_teste.txt")
+file = open("./public/files/dados_escola_A.txt")
 
 vertex = []
 vertexListId = []
@@ -27,12 +27,12 @@ file.close()
 
 for v1 in vertex:
     for v2 in vertex:
-        if(v1.vertexDataId != v2.vertexDataId and (v1.subject == v2.subject or v1.teacher == v2.teacher)):
+        if(v1.vertexDataId != v2.vertexDataId and (v1.schoolClass == v2.schoolClass or v1.teacher == v2.teacher)):
             v1.adjacents.append(v2)
             v2.adjacents.append(v1)
             G.add_edge(v1.vertexDataId, v2.vertexDataId)
 
-file = open("./public/files/horarios_teste.txt")
+file = open("./public/files/horarios_escola_A.txt")
 
 days_week = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
 hours = []
@@ -75,9 +75,8 @@ while(len(vertexListId) > 0):
 
 print(notColoring)
 
-for v in vertex:
-    if(v.schedule_id != None) :
-        print("Horário: ", schedules[v.schedule_id])
-        print("Matéria: ", v.subject)
-        print("Professor: ", v.teacher)
-        print("Turma: ", v.schoolClass)
+for s in range(len(schedules)):
+    print(schedules[s])
+    for v in vertex:
+        if(v.schedule_id != None and v.schedule_id == s) :
+            print("Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
