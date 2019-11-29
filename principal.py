@@ -26,14 +26,46 @@ class Escola(object):
         self.cores = 0
         self.horario = []
         self.verticeNaoColorido = []
+        self.restricaoProfessor = []
+        self.restricaoTurma = []
         self.G = nx.Graph()
         self.lerDadosEscolaArquivo()
         self.criarAdjacencias()
         self.colorir()
         self.adicionaCores()
         self.printar()
+        self.lerDadosRestricaoProfessorArquivo()
+        self.lerDadosRestricaoTurmaArquivo()
+
+        
 
         # print(df.tail(3))
+
+    def lerDadosRestricaoProfessorArquivo(self):
+        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
+        df = pd.read_excel(fileXLSX, 'Restricao')
+        listaArquivo = df.to_numpy()
+        for linha in listaArquivo:
+            restricao = {
+                'label': linha[0],
+                'hora': linha[1],
+                'dia': linha[2]
+            }
+            self.restricaoProfessor.append(restricao)
+
+    
+    def lerDadosRestricaoTurmaArquivo(self):
+        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
+        df = pd.read_excel(fileXLSX, "Restricoes Turma")
+        listaArquivo = df.to_numpy()
+        for linha in listaArquivo:
+            restricao = {
+                'label': linha[0],
+                'hora': linha[1],
+                'dia': linha[2]
+            }
+            self.restricaoTurma.append(restricao)
+
 
     def lerDadosEscolaArquivo(self):
         fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
@@ -98,7 +130,7 @@ class Escola(object):
             for hour in hours:
                 self.horario.append("{} - {}".format(day, hour))
 
-        self.vertices.sort(key=lambda x: x.saturacao, reverse=True)
+        # self.vertices.sort(key=lambda x: x.saturacao, reverse=True)
         
 
         while(len(self.listaVerticesId) > 0):
