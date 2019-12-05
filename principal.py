@@ -1,3 +1,4 @@
+
 import openpyxl
 
 class VertexData(object):
@@ -8,7 +9,8 @@ class VertexData(object):
         self.adjacents, self.schedule_id, self.saturation = [], None, -1
 
 #Abrindo a planilha
-path = "/home/desenvolvedor2/Documentos/Python/horario_grafos/public/files/Escola_A.xlsx"
+# path = "/home/desenvolvedor2/Documentos/Python/horario_grafos/public/files/Escola_A.xlsx"
+path = "./public/files/Escola_A.xlsx"
 wbObj = openpyxl.load_workbook(path)
 
 schollData = wbObj['Dados']
@@ -179,3 +181,4 @@ print("Não coloridos: ")
 for i in notColoring:
     v = vertex[i]
     print(v.schedule_id, " / Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
+

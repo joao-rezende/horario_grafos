@@ -1,0 +1,5 @@
+Arquivo: dados_teste.txt 
+Tempo: --- 0.011884927749633789 seconds ---
+
+Arquivo: dados_escola_A.txt
+Tempo: --- 0.5323264598846436 seconds ---
