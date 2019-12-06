@@ -6,11 +6,13 @@ class VertexData(object):
         self.vertexDataId, self.subject, self.schoolClass, self.teacher = vertexDataId, subject, schoolClass, teacher
         self.classRestriction = classRestriction
         self.teacherRestriction = teacherRestriction
-        self.adjacents, self.schedule_id, self.saturation = [], None, -1
+        self.adjacents, self.schedule_id, self.saturation = [], None, 0
 
 #Abrindo a planilha
-# path = "/home/desenvolvedor2/Documentos/Python/horario_grafos/public/files/Escola_A.xlsx"
-path = "./public/files/Escola_A.xlsx"
+# path = "./public/files/Escola_A.xlsx"
+# path = "./public/files/Escola_B.xlsx"
+# path = "./public/files/Escola_C.xlsx"
+path = "./public/files/Escola_D.xlsx"
 wbObj = openpyxl.load_workbook(path)
 
 schollData = wbObj['Dados']
@@ -34,22 +36,22 @@ teachers = []
 #Colocando o os professores e turmas em uma lista
 for i, row in enumerate(schollData.rows):
     if(i > 0):
-        if (not row[0].value in classes):
-            classes.append(row[0].value)
+        if (not row[1].value in classes):
+            classes.append(row[1].value)
 
-        if (not row[2].value in classes):
+        if (not row[2].value in teachers):
             teachers.append(row[2].value)
 
 # Adicionado as restrições da turma e dos professores do arquivo em uma lista e 
 # dicionário, respectivamente
-allClassRestriction = []
-for i in range(len(classes)):
-    allClassRestriction.append([])
+allClassRestriction = {}
+for c in classes:
+    allClassRestriction[c] = []
 
 for i, row in enumerate(classRestriction.rows):
     if(i > 0):
         scheduleRestriction = "{} - {}".format(row[2].value, row[1].value)
-        allClassRestriction[int(row[0].value) - 1].append(schedules.index(scheduleRestriction))
+        allClassRestriction[row[0].value].append(schedules.index(scheduleRestriction))
 
 allTeacherRestriction = {}
 for teacher in teachers:
@@ -76,7 +78,7 @@ for i, row in enumerate(schollData.rows):
         numberClasses = int(row[3].value)
         for i in range(numberClasses):
             vertexListId.append(n)
-            vertexData = VertexData(n, row[0].value, row[1].value, row[2].value, allClassRestriction[int(row[1].value) - 1], allTeacherRestriction[row[2].value])
+            vertexData = VertexData(n, row[0].value, row[1].value, row[2].value, allClassRestriction[row[1].value], allTeacherRestriction[row[2].value])
             vertex.append(vertexData)
             n += 1
 
@@ -127,8 +129,9 @@ while(len(vertexListId) > 0):
     # Remove da lista de vértices ainda não coloridos o vértice que foi colorido
     vertexListId.remove(maxVertex.vertexDataId)
 
+newColors = []
 # Realiza por duas vezes um algoritmo de melhoramento
-for i in range(2):
+while(colors != newColors):
     newColors = colors
     colors = []
     # Faz um laço com todas as cores que estão sendo usadas no grafo
@@ -139,17 +142,16 @@ for i in range(2):
             if(c == v.schedule_id):
                 i = 0
                 colorfulVertex = False
-                while ( i < len(newColors) or not colorfulVertex):
-                    c2 = newColors[i]
-                    if(not c2 in v.classRestriction and not c2 in v.teacherRestriction and c2 != v.schedule_id):
+                while ( i < len(schedules) and not colorfulVertex):
+                    if(not i in v.classRestriction and not i in v.teacherRestriction and i != v.schedule_id):
                         colorValidate = True
                         for adj in v.adjacents:
-                            if(adj.schedule_id == c2):
+                            if(adj.schedule_id == i):
                                 colorValidate = False
 
                         # Troca a cor do vértice e indica que ele foi colorido para parar o loop
                         if(colorValidate):
-                            v.schedule_id = c2
+                            v.schedule_id = i
                             colorfulVertex = True
 
                         # Adiciona a nova cor usada na lista de cores
@@ -157,28 +159,27 @@ for i in range(2):
                             colors.append(v.schedule_id)
                     i += 1
 
-# Gera uma lista com a cores que estão sendo usadas pelos vértices
 colors = []
 for v in vertex:
-    if(not v.schedule_id in colors):
+    if (not v.schedule_id in colors):
         colors.append(v.schedule_id)
 
 print("Número de cores:", len(colors))
 
+notColorful = []
+for v in vertex:
+    if(v.schedule_id >= len(schedules)):
+        notColorful.append(v)
+
 # Exibe no tela os vértices, separados pelo horário (cor)
-notColoring = []
-for i, color in enumerate(colors):
-    if(i < len(schedules)):
-        print(schedules[i])
-        for v in vertex:
-            if(v.schedule_id == color) :
-                print(v.schedule_id, " / Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
-    else:
-        notColoring.append(v)
+for i in range(len(schedules)):
+    print(schedules[i])
+    for v in vertex:
+        if(v.schedule_id == i) :
+            print(v.schedule_id, " / Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
 
 # Exibe na tela os vértices que não foram coloridos
 print("Não coloridos: ")
-for i in notColoring:
-    v = vertex[i]
+for v in notColorful:
     print(v.schedule_id, " / Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
 
