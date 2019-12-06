@@ -1,3 +1,6 @@
+# Fábio Tavares - 
+# James Yuri - 
+# João Vitor Soares Rezende - 201810281
 
 import openpyxl
 
@@ -42,8 +45,8 @@ for i, row in enumerate(schollData.rows):
         if (not row[2].value in teachers):
             teachers.append(row[2].value)
 
-# Adicionado as restrições da turma e dos professores do arquivo em uma lista e 
-# dicionário, respectivamente
+# Adicionado as restrições da turma e dos professores do arquivo em um
+# dicionário para ambas as restrições
 allClassRestriction = {}
 for c in classes:
     allClassRestriction[c] = []
