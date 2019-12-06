@@ -18,7 +18,7 @@ settings = wbObj['Configuracoes']
 classRestriction = wbObj['Restricoes Turma']
 teacherRestriction = wbObj['Restricao']
 
-# Gerando lista com os horários representando as cores
+# instanciando lista com os horários representando as cores
 days_week = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
 schedules = []
 
@@ -28,7 +28,7 @@ for day in days_week:
         if(i > 0):
             schedules.append("{} - {}".format(day, row[0].value))
 
-# Gerando lista de restrição de cada turma e de cada professor
+# instanciando lista de restrição de cada turma e de cada professor
 classes = []
 teachers = []
 #Colocando o os professores e turmas em uma lista
@@ -60,7 +60,7 @@ for i, row in enumerate(teacherRestriction.rows):
         scheduleRestriction = "{} - {}".format(row[2].value, row[1].value)
         allTeacherRestriction[row[0].value].append(schedules.index(scheduleRestriction))
 
-# Gerando o grafo
+# instanciando o grafo
 vertex = []
 vertexListId = []
 
