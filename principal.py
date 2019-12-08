@@ -1,198 +1,192 @@
-from openpyxl import load_workbook
-import networkx as nx
-import matplotlib.pyplot as plt
+import openpyxl
 import time
-import pandas as pd
-import random
+
+class VertexData(object):
+    def __init__(self, vertexDataId, subject, schoolClass, teacher, classRestriction, teacherRestriction):
+        self.vertexDataId, self.subject, self.schoolClass, self.teacher = vertexDataId, subject, schoolClass, teacher
+        self.classRestriction = classRestriction
+        self.teacherRestriction = teacherRestriction
+        self.adjacents, self.schedule_id, self.saturation = [], None, 0
+
+# Abrindo o arquivo de planilhas eletrônicas
+# path = "./public/files/Escola_A.xlsx"
+# path = "./public/files/Escola_B.xlsx"
+# path = "./public/files/Escola_C.xlsx"
+path = "./public/files/Escola_D.xlsx"
+# path = "./public/files/Escola_Redes.xlsx"
+wbObj = openpyxl.load_workbook(path)
+
 start_time = time.time()
 
+# Vinculando cada planilha a uma variável
+schoolData = wbObj['Dados']
+settings = wbObj['Configuracoes']
+classRestriction = wbObj['Restricoes Turma']
+teacherRestriction = wbObj['Restricao']
 
-class Vertice(object):
-    def __init__(self, idVertice, materia, turma, professor):
-        self.idVertice = idVertice
-        self.materia = materia
-        self.turma = turma
-        self.professor = professor
-        self.adjacents = []
-        self.horarioId = None
-        self.saturacao = -1
+# Lista com os dias da semana que terá aulas
+days_week = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+schedules = []
 
+# Gerando lista de horários (schedules), concatenando os dados da lista
+# de dias da semana com os horários da escola
+for day in days_week:
+    for i, row in enumerate(settings.rows):
+        if(i > 0):
+            schedules.append("{} - {}".format(day, row[0].value))
 
-class Escola(object):
-    def __init__(self):
-        self.vertices = []
-        self.listaVerticesId = []
-        self.listaCores = []
-        self.cores = 0
-        self.horario = []
-        self.verticeNaoColorido = []
-        self.restricaoProfessor = []
-        self.restricaoTurma = []
-        self.G = nx.Graph()
-        self.lerDadosEscolaArquivo()
-        self.criarAdjacencias()
-        self.colorir()
-        self.adicionaCores()
-        self.printar()
-        self.lerDadosRestricaoProfessorArquivo()
-        self.lerDadosRestricaoTurmaArquivo()
+# instanciando lista de restrição de cada turma e de cada professor
+classes = []
+teachers = []
+#Colocando os professores e as turmas em uma lista
+for i, row in enumerate(schoolData.rows):
+    if(i > 0):
+        if (not row[1].value in classes):
+            classes.append(row[1].value)
 
-        
+        if (not row[2].value in teachers):
+            teachers.append(row[2].value)
 
-        # print(df.tail(3))
+# Adicionando as restrições da turma e dos professores do arquivo em dicionários
+allClassRestriction = {}
+for c in classes:
+    allClassRestriction[c] = []
 
-    def lerDadosRestricaoProfessorArquivo(self):
-        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
-        df = pd.read_excel(fileXLSX, 'Restricao')
-        listaArquivo = df.to_numpy()
-        for linha in listaArquivo:
-            restricao = {
-                'label': linha[0],
-                'hora': linha[1],
-                'dia': linha[2]
-            }
-            self.restricaoProfessor.append(restricao)
+for i, row in enumerate(classRestriction.rows):
+    if(i > 0 and row[1].value != None and row[2].value != None):
+        scheduleRestriction = "{} - {}".format(row[2].value, row[1].value)
+        allClassRestriction[row[0].value].append(schedules.index(scheduleRestriction))
 
-    
-    def lerDadosRestricaoTurmaArquivo(self):
-        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
-        df = pd.read_excel(fileXLSX, "Restricoes Turma")
-        listaArquivo = df.to_numpy()
-        for linha in listaArquivo:
-            restricao = {
-                'label': linha[0],
-                'hora': linha[1],
-                'dia': linha[2]
-            }
-            self.restricaoTurma.append(restricao)
+allTeacherRestriction = {}
+for teacher in teachers:
+    allTeacherRestriction[teacher] = []
 
+for i, row in enumerate(teacherRestriction.rows):
+    if(i > 0 and row[1].value != None and row[2].value != None):
+        scheduleRestriction = "{} - {}".format(row[2].value, row[1].value)
+        allTeacherRestriction[row[0].value].append(schedules.index(scheduleRestriction))
 
-    def lerDadosEscolaArquivo(self):
-        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
-        df = pd.read_excel(fileXLSX, 'Dados')
-        listaArquivo = df.to_numpy()
-        verticeId = 0
-        for linha in listaArquivo:
-            for i in range(int(linha[3])):
-                self.listaVerticesId.append(verticeId)
-                vertice = Vertice(verticeId, linha[0], linha[1], linha[2])
-                self.G.add_node(verticeId)
-                self.vertices.append(vertice)
-                verticeId += 1
+# instanciando o grafo
+vertex = []
+vertexListId = []
 
-    def criarAdjacencias(self):
-        for v1 in self.vertices:
-            for v2 in self.vertices:
-                if(v1.idVertice != v2.idVertice and (v1.turma == v2.turma or v1.professor == v2.professor)):
-                    v1.adjacents.append(v2)
-                    v2.adjacents.append(v1)
-                    self.G.add_edge(v1.idVertice, v2.idVertice)
+n = 0
 
-    def adicionaCores(self):
+# Criando os vértices e adicionando todos os vértices em uma lista
+# Cria um vértice com os um identificador, matéria, turma, professor,
+# lista com restrição da turma e lista com restrição do professor.
+# De acordo com a quantidade de aulas desta matéria, com o mesmo professor e turma
+# e criado um vértice com as mesmas informações
+for i, row in enumerate(schoolData.rows):
+    if(i > 0):
+        numberClasses = int(row[3].value)
+        for i in range(numberClasses):
+            vertexListId.append(n)
+            vertexData = VertexData(n, row[0].value, row[1].value, row[2].value, allClassRestriction[row[1].value], allTeacherRestriction[row[2].value])
+            vertex.append(vertexData)
+            n += 1
 
-        for i in range(len(self.vertices)):
-            r = lambda: random.randint(0, 255)
-            color = '#{:02x}{:02x}{:02x}'.format(r(), r(), r())
-            self.listaCores.append(color)
+# Criando as arestas do grafo.
+# Adiciona os vértices adjacentes em uma lista de cada um deles.
+for v1 in vertex:
+    for v2 in vertex:
+        if(v1.vertexDataId != v2.vertexDataId and (v1.schoolClass == v2.schoolClass or v1.teacher == v2.teacher)):
+            v1.adjacents.append(v2)
 
-    def printar(self):
-        print("Nodes of graph: ")
-        print(self.G.nodes())
-        print("Edges of graph: ")
-        print(self.G.edges())
-        print("Quantidade de cor: ")
-        print(self.cores)
+# Algoritmo de coloração Dsatur
+colors = []
+while(len(vertexListId) > 0):
+    # Primeiro realiza uma busca para pegar o vértice com o maior número de saturação
+    # ou caso o maior valor de saturação seja repetido com o maior grau.
+    maxVertex = vertex[vertexListId[0]]
+    for index in vertexListId:
+        if(vertex[index].saturation > maxVertex.saturation or (vertex[index].saturation == maxVertex.saturation
+            and len(vertex[index].adjacents) > len(maxVertex.adjacents))):
+            maxVertex = vertex[index]
 
-        for v1 in self.vertices:
-            if(v1.horarioId != None) :
-                print("Horário: ", self.horario[v1.horarioId], "|| Matéria: ", v1.materia, " || Professor: ", v1.professor, " || Turma: ", v1.turma)
-                # print("Matéria: ", v1.materia)
-                # print("Professor: ", v1.professor)
-                # print("Turma: ", v1.turma)
-
-        nx.draw(self.G, node_color = self.listaCores, with_labels = True)
-        plt.savefig("simple_path.png") # save as png
-        plt.show() # display
-
-    def colorir(self):
-        days_week = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-        hours = []
-
-        fileXLSX = pd.ExcelFile('./public/files/Escola_A.xlsx')
-        df = pd.read_excel(fileXLSX, 'Configuracoes')
-        listaArquivo = df.to_numpy()        
-
-
-        for line in listaArquivo:
-            hours.append(line[0])
-
-        for day in days_week:
-            for hour in hours:
-                self.horario.append("{} - {}".format(day, hour))
-
-        # self.vertices.sort(key=lambda x: x.saturacao, reverse=True)
-        
-
-        while(len(self.listaVerticesId) > 0):
-            self.listaVerticesId.sort(reverse=True)
-            maxVertice = self.vertices[self.listaVerticesId[0]]
-            for index in self.listaVerticesId:
-                if(self.vertices[index].saturacao > maxVertice.saturacao or (self.vertices[index].saturacao == maxVertice.saturacao and len(self.vertices[index].adjacents) > len(maxVertice.adjacents))):
-                    maxVertice = self.vertices[index]
-
-
+    # Colorindo o vértice com a menor cor possível, levando em consideração a restrição
+    # de horário da turma e do professor e que nenhum dos seus adjacentes tenha a mesma
+    # cor.
+    color = 0
+    colorValidate = False
+    while(not colorValidate):
+        colorValidate = True
+        if(color in maxVertex.classRestriction or color in maxVertex.teacherRestriction):
             colorValidate = False
-            while(self.cores < len(self.horario) and not colorValidate):
-                colorValidate = True
-                for adjacent in maxVertice.adjacents:
-                    if(adjacent.horarioId == self.cores ):
-                        colorValidate = False
-                        self.cores  += 1
+            color += 1
+        else:
+            for adjacent in maxVertex.adjacents:
+                if(adjacent.schedule_id == color):
+                    colorValidate = False
+                    color += 1
 
-            if(self.cores < len(self.horario)):
-                for adjacent in maxVertice.adjacents:
-                    adjacent.saturacao += 1
-                maxVertice.horarioId = self.cores 
-            else:
-                self.verticeNaoColorido.append(maxVertice.idVertice)
+    maxVertex.schedule_id = color
+    # Aumentando o grau de saturação dos vértices adjacentes ao vértice pintado
+    for adjacent in maxVertex.adjacents:
+        adjacent.saturation += 1
 
-            if maxVertice.idVertice in self.listaVerticesId:
-                self.listaVerticesId.remove(maxVertice.idVertice)
+    # Adicionando em uma lista as cores utilizadas na coloração dos vértices
+    if(not color in colors):
+        colors.append(color)
 
+    # Remove da lista de vértices ainda não coloridos o vértice que foi colorido
+    vertexListId.remove(maxVertex.vertexDataId)
 
+newColors = []
+# Realiza o algoritmo de melhoramento, enquanto a lista de cores gerada for diferente
+# da lista gearada anteriormente.
+while(colors != newColors):
+    newColors = colors
+    colors = []
+    # Faz um laço com todas as cores que estão sendo usadas no grafo
+    for c in newColors:
+        for v in vertex:
+            # Caso o vértice tenha a cor que está sendo considerada, busca
+            # qual a menor cor que o vértice pode ter em relação as cores que estão sendo utilizadas
+            if(c == v.schedule_id):
+                i = 0
+                colorfulVertex = False
+                while ( i < len(schedules) and not colorfulVertex):
+                    if(not i in v.classRestriction and not i in v.teacherRestriction and i != v.schedule_id):
+                        colorValidate = True
+                        for adj in v.adjacents:
+                            if(adj.schedule_id == i):
+                                colorValidate = False
 
+                        # Troca a cor do vértice e indica que ele foi colorido para parar o loop
+                        if(colorValidate):
+                            v.schedule_id = i
+                            colorfulVertex = True
 
-       
-        # for u in self.vertices:
-        #     maxVertice = u
+                        # Adiciona a nova cor usada na lista de cores
+                        if(not v.schedule_id in colors):
+                            colors.append(v.schedule_id)
+                    i += 1
 
-        #     for v in self.vertices:
-        #         if(v.saturacao > verticeMaiorSaturacao.saturacao or (v.saturacao == verticeMaiorSaturacao.saturacao and len(v.adjacents) > len(verticeMaiorSaturacao.adjacents))):
-        #             verticeMaiorSaturacao = v
+colors = []
+for v in vertex:
+    if (not v.schedule_id in colors):
+        colors.append(v.schedule_id)
 
+# Gera uma lista com vértices que não foram coloridos
+notColorful = []
+for v in vertex:
+    if(v.schedule_id >= len(schedules)):
+        notColorful.append(v)
 
-        #     colorValidate = False
-        #     while(self.cores < len(self.horario) and not colorValidate):
-        #         colorValidate = True
-        #         for adjacent in verticeMaiorSaturacao.adjacents:
-        #             if(adjacent.horarioId == self.cores ):
-        #                 colorValidate = False
-        #                 self.cores  += 1
+# Exibe no tela os vértices, separados pelo horário (cor)
+for i in range(len(schedules)):
+    print(schedules[i])
+    for v in vertex:
+    # print(v.adjacents)
+        if(v.schedule_id == i) :
+            print("Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
 
-        #     if(self.cores < len(self.horario)):
-        #         for adjacent in verticeMaiorSaturacao.adjacents:
-        #             adjacent.saturacao += 1
-        #         verticeMaiorSaturacao.horarioId = self.cores 
-        #     else:
-        #         self.verticeNaoColorido.append(verticeMaiorSaturacao.idVertice)
+# Exibe na tela os vértices que não foram coloridos
+print("Não coloridos: ")
+for v in notColorful:
+    print("Matéria", v.subject, "/ ", v.teacher, "/ Turma", v.schoolClass)
 
-            
+print("Tempo de execução: %s segundos" % (time.time() - start_time))
 
-        
-
-
-E = Escola()
-
-
-
-print("--- %s seconds ---" % (time.time() - start_time))
+print("Número de cores:", len(colors))
