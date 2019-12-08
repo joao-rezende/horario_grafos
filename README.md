@@ -17,7 +17,7 @@
 <p>Já as arestas ligam vértices que contenham a mesma turma ou mesmo professor, pois como as cores representam os horários da escola, inibirá que vértices com as mesmas informações de professores ou turma estejam em um mesmo horário.<p>
 <p>Para atender as restrições de turmas e professores foram adicionadas listas (uma para turmas e outra para professores), como atributos do vértice, contendo as cores que o mesmo não poderá ter. Desta forma, evita-se que o professor fique alocado em um horário no qual não possa comparecer ou que não seja adequado para a turma.<p>
 
-<img src="../public/imagens/ModelagemGrafos.png">
+<img src="../../blob/master/public/imagens/ModelagemGrafos.png">
 
 <h1> Método de solução</h1>
 <p>Um grafo é um par G = (V ,E), onde V é um conjunto finito e E um conjunto de subconjuntos de dois elementos de V. Os elementos de V são chamados vértices do grafo e os elementos de E são chamados de arestas do grafo. O método utilizado para solucionar o problema fundamenta-se na Teoria dos Grafos, mais precisamente na Coloração de vértices também conhecida como Coloração de Grafos.</p>
